@@ -1,0 +1,4 @@
+# dsh-token-usage bundle patch（加载单一插件：今日 Token 用量统计）
+- insert:
+    - id: dsh-token-usage
+      name: dsh-token-usage

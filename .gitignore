@@ -1,0 +1,4 @@
+# 构建产物
+*.tgz
+# 依赖
+node_modules/
