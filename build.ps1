@@ -1,4 +1,4 @@
-# dsh-token-usage 打包脚本
+﻿# dsh-token-usage 打包脚本
 # 生成 npm .tgz，供 dsh plugin --profile web add ... 使用。
 $ErrorActionPreference = 'Stop'
 
