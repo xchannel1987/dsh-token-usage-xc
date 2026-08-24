@@ -28,6 +28,8 @@ DSH（DeepSeek Harness）Web 插件：**今日 Token 用量统计**（按模型 
   被中断的回合也产生带 usage 的 `assistant/message`，正常计入；失败无消息的请求不产生
   usage，自然排除。
 - 按 `event.time`（本地时区）归到 `YYYY-MM-DD`。
+- 模型维度 key 是事件自带的模型 id（`message.source.model`）；展示时优先解析配置的显示名
+  （经 `ctx.llm` 的模型服务，如 settings 里配置的 `name`），解析不到/服务不可用时回退原始 id。
 
 ## 数据接口
 
@@ -44,6 +46,7 @@ DSH（DeepSeek Harness）Web 插件：**今日 Token 用量统计**（按模型 
   sessionQueryAvailable: boolean;
   models: {
     model: string;              // 模型 id（provider/model 原样）
+    modelName: string | null;   // 配置的显示名（经 llm 服务解析，无则 null）
     provider: string;
     uncachedInputTokens: number;
     outputTokens: number;
