@@ -3,7 +3,7 @@
 DSH（DeepSeek Harness）Web 插件：**今日 Token 用量统计**（按模型 + 总计）。
 
 在设置页新增分区「今日 Token 用量」：实时统计**当天** DSH 在全部会话（主会话 + 子代理会话）中
-消耗的 token，按模型分桶展示输入 / 输出 / 缓存读 / 缓存写 / 合计 / 次数，并给出当日总计。
+消耗的 token，按模型分桶展示输入 / 输出 / 缓存读 / 缓存命中率 / 合计 / 次数，并给出当日总计与最近 7 日按模型堆叠趋势图。
 可选在会话顶栏常驻一个总 token 徽标（默认关闭）。
 
 ## 数据来源（复用 DSH 现有机制，不直接解析会话日志）
@@ -15,7 +15,7 @@ DSH（DeepSeek Harness）Web 插件：**今日 Token 用量统计**（按模型 
   重启不丢、跨天自动切换、7 天自动清理。
 - **启动回填**：经 `ctx.sessionQuery.listSessions()` + `readSession()`（持久化正规读取路径，
   正确处理多帧 zstd）回填今天早于插件加载的用量，按会话 seq 水位去重，绝不重复计数。
-- **对外提供**：宿主 RPC 通道 `/dsh-token-usage`（端点 `today`），浏览器端轮询渲染。
+- **对外提供**：宿主 RPC 通道 `/dsh-token-usage`（端点 `today`、`last7days`），浏览器端轮询渲染。
 
 > 为什么不自己解析 `session.jsonl.zstd`：该文件是**多 zstd 帧拼接**（每次 append 一帧），
 > 单次解压只能解出第一帧；正确读法要像持久化后端那样扫描帧边界逐帧解码并处理
@@ -24,6 +24,10 @@ DSH（DeepSeek Harness）Web 插件：**今日 Token 用量统计**（按模型 
 ## 统计口径
 
 - `total = uncachedInput + cacheRead + cacheWrite + output`（与 DSH `tokenUsage` 投影一致）。
+- 前端缓存命中率：`cacheRead / (uncachedInput + cacheRead) × 100%`；分母为 0 显示 `—`。
+- Token 数量使用紧凑格式：`K/M/B`，悬停 tooltip 显示完整精确值。
+- 前端缓存命中率：`cacheRead / (uncachedInput + cacheRead) × 100%`；分母为 0 显示 `—`。
+- Token 数量使用紧凑格式：`K/M/B`，悬停 tooltip 显示完整精确值。
 - 只折叠 `assistant/message` 的最终 usage：每一步恰好一条、自带最终账单值，天然无重复；
   被中断的回合也产生带 usage 的 `assistant/message`，正常计入；失败无消息的请求不产生
   usage，自然排除。
@@ -33,7 +37,7 @@ DSH（DeepSeek Harness）Web 插件：**今日 Token 用量统计**（按模型 
 
 ## 数据接口
 
-浏览器 → host RPC：`POST /dsh-token-usage/today`（channel 由插件注册，`authority: trusted-host`）。
+浏览器 → host RPC：`POST /dsh-token-usage/today` 和 `POST /dsh-token-usage/last7days`（channel 由插件注册，`authority: trusted-host`）。
 
 ```ts
 {
@@ -74,7 +78,7 @@ DSH（DeepSeek Harness）Web 插件：**今日 Token 用量统计**（按模型 
 ```powershell
 cd D:\workspace\dsh-token-usage
 .\build.ps1                            # npm pack 生成 .tgz
-dsh plugin --profile web add dsh-token-usage@file:D:\workspace\dsh-token-usage\dsh-token-usage-0.1.0.tgz
+dsh plugin --profile web add dsh-token-usage@file:D:\workspace\dsh-token-usage\dsh-token-usage-0.2.1.tgz
 ```
 
 安装后确认 `~/.dsh/profiles/web/package.json` 的 `dsh.profile.bundles` 包含 `dsh-token-usage`，
@@ -88,7 +92,7 @@ dsh plugin --profile web add dsh-token-usage@file:D:\workspace\dsh-token-usage\d
    ```
 2. 若用 `file:` 指向目录，先执行 `npm pack` 并在 profile 的 `package.json` 里写：
    ```json
-   "dsh-token-usage": "file:D:/workspace/dsh-token-usage/dsh-token-usage-0.1.0.tgz"
+   "dsh-token-usage": "file:D:/workspace/dsh-token-usage/dsh-token-usage-0.2.0.tgz"
    ```
 3. 确认 `dsh.profile.bundles` 列表、重启 `dsh web`。
 
