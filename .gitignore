@@ -2,3 +2,5 @@
 *.tgz
 # 依赖
 node_modules/
+# Claude Code 项目配置
+CLAUDE.md

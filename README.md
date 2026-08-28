@@ -1,4 +1,9 @@
-# dsh-token-usage
+# dsh-token-usage-xc
+
+[![npm version](https://img.shields.io/npm/v/dsh-token-usage-xc.svg)](https://www.npmjs.com/package/dsh-token-usage-xc)
+[![license](https://img.shields.io/npm/l/dsh-token-usage-xc.svg)](https://github.com/keyiadiannao/dsh-token-usage-xc/blob/main/LICENSE)
+[![downloads](https://img.shields.io/npm/dm/dsh-token-usage-xc.svg)](https://www.npmjs.com/package/dsh-token-usage-xc)
+
 
 DSH（DeepSeek Harness）Web 插件：**今日 Token 用量统计**（按模型 + 总计）。
 
@@ -11,11 +16,11 @@ DSH（DeepSeek Harness）Web 插件：**今日 Token 用量统计**（按模型 
 - **实时捕获**：宿主侧监听 `session/event`（与 `dsh-token-meter` 同款捕获面），折叠
   `assistant/message` 事件的 `usage`（provider 报告值）。
 - **模型归属**：直接读事件自带的 `message.source.model` / `.provider`，无需额外状态。
-- **按天落盘**：写入 `~/.dsh/storages/dsh-token-usage/<YYYY-MM-DD>.json`（含会话水位），
+- **按天落盘**：写入 `~/.dsh/storages/dsh-token-usage-xc/<YYYY-MM-DD>.json`（含会话水位），
   重启不丢、跨天自动切换、7 天自动清理。
 - **启动回填**：经 `ctx.sessionQuery.listSessions()` + `readSession()`（持久化正规读取路径，
   正确处理多帧 zstd）回填今天早于插件加载的用量，按会话 seq 水位去重，绝不重复计数。
-- **对外提供**：宿主 RPC 通道 `/dsh-token-usage`（端点 `today`、`last7days`），浏览器端轮询渲染。
+- **对外提供**：宿主 RPC 通道 `/dsh-token-usage-xc`（端点 `today`、`last7days`），浏览器端轮询渲染。
 
 > 为什么不自己解析 `session.jsonl.zstd`：该文件是**多 zstd 帧拼接**（每次 append 一帧），
 > 单次解压只能解出第一帧；正确读法要像持久化后端那样扫描帧边界逐帧解码并处理
@@ -37,7 +42,7 @@ DSH（DeepSeek Harness）Web 插件：**今日 Token 用量统计**（按模型 
 
 ## 数据接口
 
-浏览器 → host RPC：`POST /dsh-token-usage/today` 和 `POST /dsh-token-usage/last7days`（channel 由插件注册，`authority: trusted-host`）。
+浏览器 → host RPC：`POST /dsh-token-usage-xc/today` 和 `POST /dsh-token-usage-xc/last7days`（channel 由插件注册，`authority: trusted-host`）。
 
 ```ts
 {
@@ -62,7 +67,7 @@ DSH（DeepSeek Harness）Web 插件：**今日 Token 用量统计**（按模型 
 }
 ```
 
-## 配置字段（settings 命名空间 `dsh-token-usage`）
+## 配置字段（settings 命名空间 `dsh-token-usage-xc`）
 
 | 字段 | 默认值 | 说明 |
 |---|---|---|
@@ -76,23 +81,23 @@ DSH（DeepSeek Harness）Web 插件：**今日 Token 用量统计**（按模型 
 ### 方式 A：本地打包安装（推荐）
 
 ```powershell
-cd D:\workspace\dsh-token-usage
+cd D:\workspace\dsh-token-usage-xc
 .\build.ps1                            # npm pack 生成 .tgz
-dsh plugin --profile web add dsh-token-usage@file:D:\workspace\dsh-token-usage\dsh-token-usage-0.2.1.tgz
+dsh plugin --profile web add dsh-token-usage-xc@file:D:\workspace\dsh-token-usage-xc\dsh-token-usage-xc-0.2.1.tgz
 ```
 
-安装后确认 `~/.dsh/profiles/web/package.json` 的 `dsh.profile.bundles` 包含 `dsh-token-usage`，
+安装后确认 `~/.dsh/profiles/web/package.json` 的 `dsh.profile.bundles` 包含 `dsh-token-usage-xc`，
 然后**重启 `dsh web`** 生效。
 
 ### 方式 B：直接编辑 profile（无需打包）
 
 1. 把本目录作为一个包加入 profile：
    ```powershell
-   dsh plugin --profile web add dsh-token-usage@file:D:\workspace\dsh-token-usage
+   dsh plugin --profile web add dsh-token-usage-xc@file:D:\workspace\dsh-token-usage-xc
    ```
 2. 若用 `file:` 指向目录，先执行 `npm pack` 并在 profile 的 `package.json` 里写：
    ```json
-   "dsh-token-usage": "file:D:/workspace/dsh-token-usage/dsh-token-usage-0.2.0.tgz"
+   "dsh-token-usage-xc": "file:D:/workspace/dsh-token-usage-xc/dsh-token-usage-xc-0.2.0.tgz"
    ```
 3. 确认 `dsh.profile.bundles` 列表、重启 `dsh web`。
 
@@ -105,7 +110,7 @@ dsh plugin --profile web add dsh-token-usage@file:D:\workspace\dsh-token-usage\d
 ## 项目结构
 
 ```
-lib/index.js    # Host 插件：settings 命名空间 + session/event 累计 + 按天落盘 + 启动回填 + /dsh-token-usage RPC
+lib/index.js    # Host 插件：settings 命名空间 + session/event 累计 + 按天落盘 + 启动回填 + /dsh-token-usage-xc RPC
 lib/client.js   # 浏览器 bundle：设置页分区 + 可选顶栏徽标 + 轮询 + 明细表格
 cordis.patch.yml # bundle 加载补丁（- insert）
 build.ps1       # 打包 tgz
@@ -114,7 +119,7 @@ build.ps1       # 打包 tgz
 ## 卸载
 
 ```powershell
-dsh plugin --profile web remove dsh-token-usage
+dsh plugin --profile web remove dsh-token-usage-xc
 ```
 
 ## License
