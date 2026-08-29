@@ -59,12 +59,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/keyiadiannao/dsh-token-usage-xc.git"
+    "url": "git+https://github.com/xchannel1987/dsh-token-usage-xc.git"
   },
   "bugs": {
-    "url": "https://github.com/keyiadiannao/dsh-token-usage-xc/issues"
+    "url": "https://github.com/xchannel1987/dsh-token-usage-xc/issues"
   },
-  "homepage": "https://github.com/keyiadiannao/dsh-token-usage-xc#readme",
+  "homepage": "https://github.com/xchannel1987/dsh-token-usage-xc#readme",
   "publishConfig": {
     "access": "public"
   },
