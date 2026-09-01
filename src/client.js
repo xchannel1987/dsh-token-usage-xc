@@ -1,7 +1,7 @@
 // dsh-token-usage-xc 浏览器端 bundle（手写，无构建步骤）
 //
 // 与 DSH 内置客户端插件同构：window.__ModuleLoader__.load({ id, factory })。
-// 只 require() 平台静态模块（react / primitives / runtime/client），
+// 只 require() 平台静态模块（react / primitives / client-store），
 // 其余协作全部走 cordis 服务注入（connection / slots / locale / settingsScope）。
 //
 // 展示：
@@ -20,7 +20,7 @@ window.__ModuleLoader__.load({
 		let react = require("react");
 		let reactDom = require("react-dom");
 		let primitives = require("@deepseek-ai/dsh-client-ui-primitives");
-		let runtime = require("@deepseek-ai/dsh-client-runtime/client");
+		let runtime = require("@deepseek-ai/dsh-client-store");
 
 		// ---- 样式（作用域类名 dshu-*；使用 DSH 主题变量并带兜底）----
 		const CSS = [

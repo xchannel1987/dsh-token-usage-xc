@@ -13,7 +13,6 @@
 // 的 usageTokens 一致）；只折叠 assistant/message 的最终 usage（每步恰好一条、天然无重复）。
 
 import z from "@deepseek-ai/schemastery";
-import { installSettingsSection, settingsNamespace } from "@deepseek-ai/dsh-settings";
 import os from "node:os";
 import { mkdir, readFile, writeFile, readdir, rm } from "node:fs/promises";
 import path from "node:path";
@@ -439,11 +438,16 @@ export function apply(ctx, config = {}) {
   let current = () => config;
 
   // 1) 设置命名空间：用户在设置页配置，live 生效。
-  installSettingsSection(ctx, settingsNamespace(NS), SettingsSchema, config, {
-    setSource: (source) => {
-      current = source;
-    },
-    onChange: () => {},
+  //    直接经 settings 服务注册（与当前 DSH 版本兼容：dsh-settings 0.1.2-alpha.3 已
+  //    不再导出 installSettingsSection / settingsNamespace，统一使用 ctx.settings.register 的
+  //    稳定服务接口；0.1.1-rc.2 及更早版本同样支持该接口）。
+  ctx.inject(["settings"], (sctx) => {
+    const scope = sctx.settings.register(NS, SettingsSchema, { base: config });
+    current = () => scope.get();
+    sctx.effect(() => () => {
+      // settings 服务卸载 / 插件卸载时回退到静态配置（同旧 installSettingsSection 语义）
+      current = () => config;
+    });
   });
 
   const store = new TokenUsageStore({ isEnabled: () => current().enabled });
