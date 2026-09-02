@@ -28,6 +28,8 @@ New "Today's Token Usage" section in settings page showing:
 - **Real-time Display**: Shows today's total tokens in conversation header
 - **Click to Expand**: Click badge for detailed breakdown
 - **Compact Format**: K/M/B notation with hover for exact values
+- **Mobile Layout** (≤1023px): the header row reads  Hamburg │ PTC mode │ Remaining meter │ Usage badge │ Background jobs — the badge sits second-to-last with jobs rightmost, aligned on the same row as the drawer toggle without overlap; ≤380px wraps automatically while preserving visual order
+- **Mobile Compactness**: the "tok" suffix is hidden and padding tightened so a 390px-wide single row fits completely
 
 ### 💾 Data Persistence
 - **Daily Storage**: `~/.dsh/storages/dsh-token-usage-xc/<YYYY-MM-DD>.json`
