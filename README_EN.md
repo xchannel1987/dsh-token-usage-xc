@@ -91,7 +91,8 @@ Restart DSH after installation. You'll see a new "Today's Token Usage" section i
 RPC endpoints for other plugins:
 
 ```typescript
-// POST /dsh-token-usage-xc/today
+// rpc.call("/api", "dsh-token-usage-xc/today", {})  -> physical route: POST /api/dsh-token-usage-xc/today
+// (preferred since 0.2.24; legacy rpc.call("/dsh-token-usage-xc","today") still served on dsh <0.1.5 or patched hosts)
 {
   available: boolean;
   date: string;           // 'YYYY-MM-DD'
@@ -110,7 +111,7 @@ RPC endpoints for other plugins:
   }[];
 }
 
-// POST /dsh-token-usage-xc/last7days
+// rpc.call("/api", "dsh-token-usage-xc/last7days", {})
 // Returns last 7 days' aggregated data
 ```
 

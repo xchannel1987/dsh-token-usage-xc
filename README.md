@@ -91,7 +91,8 @@ npm install dsh-token-usage-xc
 提供 RPC 接口供其他插件调用：
 
 ```typescript
-// POST /dsh-token-usage-xc/today
+// rpc.call("/api", "dsh-token-usage-xc/today", {})  → 物理路由 POST /api/dsh-token-usage-xc/today
+// （0.2.24 起首选；dsh <0.1.5 或宿主带 profile 补丁时旧通道 rpc.call("/dsh-token-usage-xc","today") 亦在）
 {
   available: boolean;
   date: string;           // 'YYYY-MM-DD'
@@ -110,7 +111,7 @@ npm install dsh-token-usage-xc
   }[];
 }
 
-// POST /dsh-token-usage-xc/last7days
+// rpc.call("/api", "dsh-token-usage-xc/last7days", {})
 // 返回最近 7 日的汇总数据
 ```
 

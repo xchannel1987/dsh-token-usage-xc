@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.2.24] - 2026-09-10
+
+### Fixed
+- 修复 dsh ≥0.1.5（当前 latest 0.1.5-rc.1）下"无数据展示"：该版本起
+  `connection.rpc.handle()` 内部经 caller-fiber shadow 回到 connection 提供者 fiber 解析
+  `owner.webServer`（其包级 inject 已从 ["webServer","credentials"] 缩为 ["credentials"]），
+  抛 "cannot get property webServer without inject" 且被插件 ctx.inject 子 fiber 静默吞掉
+  （主 fiber 仍 active、零日志），HTTP 通道从未注册，浏览器 POST 落到 SPA 兜底变 405。
+  Host 侧统计/落盘不受影响，历史数据不丢。
+- 迁移到 `connection.fetch.register()`：Host 注册 /api/dsh-token-usage-xc/{today,last7days}
+  两条精确 Fetch 路由（其 effect 体仅写 connection 服务内部 Map、不触碰 webServer，任何
+  第三方 fiber 均可注册；该 API 自 0.1.2-alpha.3 起存在，engines 兼容范围不变）；浏览器端
+  改调 `rpc.call("/api", "dsh-token-usage-xc/<endpoint>")`，撞旧宿主 404/405 时自动回退
+  旧通道一次。旧 rpc.handle 通道保留 try/catch 兜底（dsh <0.1.5 或宿主带 profile 补丁时
+  旧通道照常可挂）。同思路见 dsh-session-xc 0.9.0。
+
 ## [0.2.23] - 2026-09-08
 
 ### Added

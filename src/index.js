@@ -7,7 +7,9 @@
 //      （含会话水位，重启不丢、跨天自动切换）。
 //   3. 启动时经 ctx.sessionQuery（持久化正规读取路径，正确处理多帧 zstd）回填今天
 //      早于插件加载的用量，按会话 seq 水位去重，绝不直接解析 session.jsonl.zstd。
-//   4. 注册 /dsh-token-usage-xc RPC（端点 today）供浏览器查询当天按模型汇总 + 总计。
+//   4. 经 connection.fetch.register 注册 /api/dsh-token-usage-xc/{today,last7days} 精确
+//      Fetch 路由供浏览器查询（dsh ≥0.1.5 起 rpc.handle 通道静默失效，见 CHANGELOG 0.2.24；
+//      旧 rpc.handle 通道保留 try/catch 兜底，兼容旧客户端与带 profile 补丁的宿主）。
 //
 // 统计口径：total = uncachedInput + cacheRead + cacheWrite + output（与 dsh-token-meter
 // 的 usageTokens 一致）；只折叠 assistant/message 的最终 usage（每步恰好一条、天然无重复）。
@@ -26,6 +28,8 @@ const NS = "dsh-token-usage-xc";
 const RPC_CHANNEL = "/dsh-token-usage-xc";
 const RPC_ENDPOINT = "today";
 const RPC_LAST7_ENDPOINT = "last7days";
+/** 精确 Fetch 路由前缀（挂在共享 /api 通道下，见 apply 第 5 节）。 */
+const RPC_API_PREFIX = "/api/" + NS;
 /** DSH 家目录（同 dsh-home-paths：\$DSH_HOME 优先，否则 ~/.dsh）。 */
 const DSH_HOME = () => {
   const env = process.env.DSH_HOME;
@@ -474,45 +478,96 @@ export function apply(ctx, config = {}) {
   });
 
   // 5) RPC：浏览器 -> host。
-  ctx.inject(["connection"], (connectionCtx) => {
-    connectionCtx.connection.rpc.handle(
-      RPC_CHANNEL,
-      async (endpoint) => {
-        if (endpoint !== RPC_ENDPOINT && endpoint !== RPC_LAST7_ENDPOINT) {
-          return {
-            ok: true,
-            value: {
-              available: false,
-              error: { kind: "bad-request", message: "未知端点：" + String(endpoint) },
+  //    dsh ≥0.1.5 起 rpc.handle 静默失效：dsh-client-connection 包级 inject 从
+  //    ["webServer","credentials"] 缩为 ["credentials"]，而 register() 内部经 caller-fiber
+  //    shadow 回到 connection 提供者 fiber 解析 owner.webServer，未声明即抛
+  //    "cannot get property webServer without inject"，且异常被本 ctx.inject 子 fiber
+  //    吞掉（主 fiber 仍 active、零日志），HTTP 通道从未注册、POST 落到 SPA 兜底变 405。
+  //    改用 connection.fetch.register()：其 effect 体只写连接服务内部 Map、不触碰
+  //    webServer，任何第三方 fiber 均可注册（离线复现实测）；该 API 自 0.1.2-alpha.3 起
+  //    存在且形态一致，覆盖 engines 声明的全部兼容范围。认证不降级：/api 前缀路由自带
+  //    Host/Origin fence + token/cookie 门禁。旧 rpc.handle 通道保留 try/catch 兜底
+  //    （同 dsh-session-xc 0.9.0 做法）。
+  const handleRpc = async (endpoint) => {
+    if (endpoint !== RPC_ENDPOINT && endpoint !== RPC_LAST7_ENDPOINT) {
+      return {
+        ok: true,
+        value: {
+          available: false,
+          error: { kind: "bad-request", message: "未知端点：" + String(endpoint) },
+        },
+      };
+    }
+    if (!current().enabled) {
+      return {
+        ok: true,
+        value: endpoint === RPC_LAST7_ENDPOINT
+          ? { available: true, disabled: true, days: [] }
+          : {
+              available: true,
+              disabled: true,
+              date: store.day,
+              generatedAt: new Date().toISOString(),
+              totalTokens: 0,
+              requests: 0,
+              models: [],
             },
-          };
-        }
-        if (!current().enabled) {
-          return {
-            ok: true,
-            value: endpoint === RPC_LAST7_ENDPOINT
-              ? { available: true, disabled: true, days: [] }
-              : {
-                  available: true,
-                  disabled: true,
-                  date: store.day,
-                  generatedAt: new Date().toISOString(),
-                  totalTokens: 0,
-                  requests: 0,
-                  models: [],
-                },
-          };
-        }
-        return {
-          ok: true,
-          value: endpoint === RPC_LAST7_ENDPOINT ? await store.last7DaysView() : await store.todayView(),
-        };
-      },
-      { authority: "trusted-host" }
-    );
+      };
+    }
+    return {
+      ok: true,
+      value: endpoint === RPC_LAST7_ENDPOINT ? await store.last7DaysView() : await store.todayView(),
+    };
+  };
+
+  ctx.inject(["connection"], (connectionCtx) => {
+    for (const endpoint of [RPC_ENDPOINT, RPC_LAST7_ENDPOINT]) {
+      try {
+        connectionCtx.connection.fetch.register({
+          path: RPC_API_PREFIX + "/" + endpoint,
+          methods: ["POST"],
+          requestBody: "buffered",
+          fetch: async (request) => {
+            let rpcId = "invalid-request";
+            try {
+              const body = await request.json().catch(() => null);
+              if (!body || body.type !== "client-request" || typeof body.rpcId !== "string" || typeof body.method !== "string") {
+                return Response.json({
+                  type: "server-response",
+                  rpcId,
+                  result: { ok: false, error: { code: "gateway/bad-request", message: "invalid client-request message", details: {} } },
+                });
+              }
+              rpcId = body.rpcId;
+              if (body.method !== NS + "/" + endpoint) {
+                return Response.json({
+                  type: "server-response",
+                  rpcId,
+                  result: { ok: false, error: { code: "gateway/bad-request", message: "method does not match route: " + String(body.method), details: {} } },
+                });
+              }
+              return Response.json({ type: "server-response", rpcId, result: await handleRpc(endpoint) });
+            } catch (error) {
+              return Response.json({
+                type: "server-response",
+                rpcId,
+                result: { ok: false, error: { code: "internal", message: error instanceof Error ? error.message : String(error), details: {} } },
+              });
+            }
+          },
+        });
+      } catch (error) {
+        console.error(`[dsh-token-usage-xc] Fetch 路由注册失败（${endpoint}）：`, error);
+      }
+    }
+    try {
+      connectionCtx.connection.rpc.handle(RPC_CHANNEL, (endpoint) => handleRpc(endpoint), { authority: "trusted-host" });
+    } catch {
+      // 预期内：dsh ≥0.1.5 且宿主未带 profile 补丁时 rpc.handle 必抛（见上方注释），忽略。
+    }
   });
 
-  // 5) 卸载时尽力刷盘。
+  // 6) 卸载时尽力刷盘。
   ctx.effect(() => () => {
     void store.flush();
   });
