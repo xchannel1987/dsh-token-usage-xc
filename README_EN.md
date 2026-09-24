@@ -9,6 +9,8 @@
 
 **DSH Token Usage Statistics Plugin** — Real-time tracking of today's and last 7 days' token consumption, bucketed by model with cache hit rate analysis and trend charts.
 
+> **DSH 0.1.7 compatible (`>=0.1.7-rc.1`)**: settings namespace adapted to the 0.1.7 mechanism (host exports `Config` + volatile fields).
+
 ## ✨ Core Features
 
 ### 📊 Today's Token Usage

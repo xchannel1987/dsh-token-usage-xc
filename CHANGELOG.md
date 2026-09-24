@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.25] - 2026-09-24
+
+### Changed
+- **适配 DSH 0.1.7**：设置命名空间改由宿主导出的 `Config` 声明（各字段标 `volatile`，
+  否则不会投影到 describe() / 设置页），移除已在 0.1.7 移除的 `ctx.settings.register`
+  调用；`engines.dsh`：`>=0.1.2-alpha.3` → `>=0.1.7-rc.1`。
+
 ## [0.2.24] - 2026-09-10
 
 ### Fixed

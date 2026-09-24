@@ -1,6 +1,6 @@
 {
   "name": "dsh-token-usage-xc",
-  "version": "0.2.24",
+  "version": "0.2.25",
   "description": "DSH web plugin: 今日与最近 7 日 Token 用量统计，按模型分桶，提供页头摘要、缓存命中率和 7 日趋势图。",
   "type": "module",
   "main": "lib/index.js",
@@ -60,7 +60,7 @@
   ],
   "engines": {
     "node": ">=18",
-    "dsh": ">=0.1.2-alpha.3"
+    "dsh": ">=0.1.7-rc.1"
   },
   "scripts": {},
   "devDependencies": {},

@@ -42,13 +42,24 @@ const BACKFILL_CONCURRENCY = 4;
 const NAME_CACHE_TTL_MS = 10 * 60 * 1000;
 const DAY_MS = 86400000;
 
-/** 设置命名空间 schema。 */
+/**
+ * 设置命名空间 schema。
+ * 字段标记 volatile（等价于 schemastery >= 3.18.4 的 `.volatile()`，用 `.extra()` 写法
+ * 以便同时兼容 profile 内提升的 3.18.1）：DSH >= 0.1.7 的设置服务只把「含 volatile 字段」
+ * 的 Config 投影为可配置命名空间，未标记则整个命名空间不出现在 describe() 里。
+ */
 const SettingsSchema = z.object({
-  enabled: z.boolean().default(true),
-  refreshIntervalSec: z.number().min(10).max(3600).default(60),
-  backfill: z.boolean().default(true),
-  headerBadge: z.boolean().default(false),
+  enabled: z.boolean().default(true).extra("volatile", true),
+  refreshIntervalSec: z.number().min(10).max(3600).default(60).extra("volatile", true),
+  backfill: z.boolean().default(true).extra("volatile", true),
+  headerBadge: z.boolean().default(false).extra("volatile", true),
 });
+
+/**
+ * 插件 Config：DSH >= 0.1.7 由宿主插件「导出的 Config」声明设置命名空间
+ * （命名空间 id = profile 条目 id = NS），旧版 ctx.settings.register 接口已移除。
+ */
+export const Config = SettingsSchema;
 
 // ---- 纯函数辅助 ----
 
@@ -438,21 +449,26 @@ class TokenUsageStore {
 
 // ---- 插件主体 ----
 
-export function apply(ctx, config = {}) {
-  let current = () => config;
+/**
+ * 解包 volatile 字段引用：schemastery >= 3.18.4 把 volatile 值包成不可变引用
+ * （官方插件写 `this.config.x.get()`），3.18.1 则是普通值。两种都归一化为普通值。
+ */
+function readField(value) {
+  return value !== null && typeof value === "object" && typeof value.get === "function" ? value.get() : value;
+}
 
-  // 1) 设置命名空间：用户在设置页配置，live 生效。
-  //    直接经 settings 服务注册（与当前 DSH 版本兼容：dsh-settings 0.1.2-alpha.3 已
-  //    不再导出 installSettingsSection / settingsNamespace，统一使用 ctx.settings.register 的
-  //    稳定服务接口；0.1.1-rc.2 及更早版本同样支持该接口）。
-  ctx.inject(["settings"], (sctx) => {
-    const scope = sctx.settings.register(NS, SettingsSchema, { base: config });
-    current = () => scope.get();
-    sctx.effect(() => () => {
-      // settings 服务卸载 / 插件卸载时回退到静态配置（同旧 installSettingsSection 语义）
-      current = () => config;
-    });
-  });
+/** 归一化整份配置为普通值对象（逐字段解包 volatile 引用）。 */
+function readConfig(config) {
+  const out = {};
+  for (const key of Object.keys(config ?? {})) out[key] = readField(config[key]);
+  return out;
+}
+
+export function apply(ctx, config = {}) {
+  // 1) 设置来源（DSH >= 0.1.7）：命名空间由导出的 Config 声明，值经本函数的 config 参数
+  //    注入——用户改设置后宿主会重载本插件，所以每次 apply 拿到的都是最新值，无需 watch。
+  //    （旧版 ctx.settings.register 在 0.1.7 已移除，这里不再调用。）
+  let current = () => readConfig(config);
 
   const store = new TokenUsageStore({ isEnabled: () => current().enabled });
   void store.init();

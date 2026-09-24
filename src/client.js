@@ -2,7 +2,7 @@
 //
 // 与 DSH 内置客户端插件同构：window.__ModuleLoader__.load({ id, factory })。
 // 只 require() 平台静态模块（react / primitives / client-store），
-// 其余协作全部走 cordis 服务注入（connection / slots / locale / settingsScope）。
+// 其余协作全部走 cordis 服务注入（connection / slots / locale / configForms）。
 //
 // 展示：
 //   1. 设置页新增分区「今日 Token 用量」（settings.section）：日期 + 总计 + 按模型表格
@@ -590,13 +590,15 @@ window.__ModuleLoader__.load({
 		};
 
 		// ---- 插件主体 ----
-		const inject = ["connection", "slots", "locale", "settingsScope"];
+		// DSH >= 0.1.7：客户端 settingsScope 服务更名为 configForms，get(ns) 返回同形态的
+		// 命名空间 scope（getSnapshot/subscribe/set/unset/mutate）；命名空间 id = profile 条目 id。
+		const inject = ["connection", "slots", "locale", "configForms"];
 
 		function apply(ctx) {
 			ctx.effect(() => ctx.locale.register(NS, { zh, en }), "dsh-token-usage-xc: dictionaries");
 			const t = ctx.locale.bind(NS);
 			const connection = ctx.get("connection");
-			const scope = ctx.settingsScope.bind({ namespace: NS });
+			const scope = ctx.configForms.get(NS);
 			const controller = createController(connection.rpc, scope);
 
 			ctx.effect(() => {
