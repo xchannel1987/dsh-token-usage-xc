@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.2.27] - 2026-11-11
+
+### Changed
+- 设置页左侧菜单图标从默认齿轮改为**仪表盘**图标（注册 `settings.section.icon`，id `dsh-token-usage-xc` 与分区 id 一致）。
+
 ## [0.2.26] - 2026-09-24
 
 ### Chore
